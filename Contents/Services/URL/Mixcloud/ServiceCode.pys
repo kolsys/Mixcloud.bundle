@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2014, KOL
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the <organization> nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTLICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import common as Common
+from zlib import crc32
+
+
+def MediaObjectsForURL(url):
+    item = Common.InitMetaUrl(url).item
+    return [
+        MediaObject(
+            parts=[PartObject(key=Callback(Play, url=item['url']))],
+            container=Container.MP4,
+            audio_codec=AudioCodec.AAC,
+            audio_channels=2,
+            video_codec='',  # Crutch for disable generate parts,
+            optimized_for_streaming=True,
+        )
+    ]
+
+
+def MetadataObjectForURL(url):
+    item = Common.InitMetaUrl(url).item
+    return TrackObject(
+        title=u'%s' % (item['name']),
+        thumb=item['pictures']['640wx640h'],
+        duration=item['audio_length']*1000 if 'audio_length' in item else None,
+        genres=[tag['name'] for tag in item['tags']],
+        artist=item['user']['name'],
+        source_title=L('Title'),
+        rating_key=crc32(item['key']) & 0xFFFFFF  # PHT workaround
+    )
+
+@indirect
+def Play(url):
+
+    info = Common.GetStreamInfo(url)
+    if not info or 'stream_url' not in info:
+        raise Ex.MediaNotAvailable
+
+    # We must return VideoClipObject here because web client does not
+    # support TrackObject for indirect response
+    return IndirectResponse(VideoClipObject, key=info['stream_url'])
