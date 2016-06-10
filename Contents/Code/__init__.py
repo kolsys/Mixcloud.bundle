@@ -295,7 +295,8 @@ def AddUser(oc, key):
 
     if not oc.title2:
         oc.title2=u'%s' % user['username']
-    if 'cover_pictures' in user:
+
+    if 'cover_pictures' in user and 'large' in user['cover_pictures']:
         oc.art=user['cover_pictures']['large']
 
     for connection, key in user['metadata']['connections'].items():
