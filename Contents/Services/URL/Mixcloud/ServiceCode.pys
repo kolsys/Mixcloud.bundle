@@ -34,8 +34,8 @@ def MediaObjectsForURL(url):
     return [
         MediaObject(
             parts=[PartObject(key=Callback(Play, url=item['url']))],
-            container=Container.MP4,
-            audio_codec=AudioCodec.AAC,
+            container=Container.MP3,
+            audio_codec=AudioCodec.MP3,
             audio_channels=2,
             video_codec='',  # Crutch for disable generate parts,
             optimized_for_streaming=True,
@@ -55,13 +55,16 @@ def MetadataObjectForURL(url):
         rating_key=crc32(item['key']) & 0xFFFFFF  # PHT workaround
     )
 
+
 @indirect
 def Play(url):
 
     info = Common.GetStreamInfo(url)
-    if not info or 'stream_url' not in info:
+    try:
+        url = info['url']
+    except KeyError:
+        url = HTTPLiveStreamURL(info['hlsUrl'])
+    except:
         raise Ex.MediaNotAvailable
 
-    # We must return VideoClipObject here because web client does not
-    # support TrackObject for indirect response
-    return IndirectResponse(VideoClipObject, key=info['stream_url'])
+    return IndirectResponse(TrackObject, key=url)

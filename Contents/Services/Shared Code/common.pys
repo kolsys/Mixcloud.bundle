@@ -58,34 +58,46 @@ def GetArtBySlug(slug):
 def GetStreamInfo(url):
 
     try:
-        page = HTTP.Request(url).content
+        data = HTML.ElementFromURL(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
+            }
+        ).xpath(
+            '//script[@type="text/x-mixcloud"]'
+        )[0].text_content()
+        data = JSON.ObjectFromString(String.DecodeHTMLEntities(data))
     except:
         return None
 
-    try:
-        info = HTML.ElementFromString(page).xpath(
-            '//*[@m-play-info]'
-        )[0].get('m-play-info')
-    except:
+    for item in data:
         try:
-            info = Regex('"play_info": ?"([^""]+)"', page).match(page).group(1)
-        except:
-            return None
+            info = item['cloudcast']['data']['cloudcastLookup']['streamInfo']
+            ret = {}
+            for key in ['hlsUrl', 'url', 'dashUrl']:
+                if key in info and info[key]:
+                    ret[key] = Decode(info[key])
 
-    info = list(String.Base64Decode(info))
-    key = 'pleasedontdownloadourmusictheartistswontgetpaid'
+            Log.Debug(ret)
+            return ret
+        except:
+            continue
+
+    return None
+
+
+def Decode(encoded):
+    encoded = list(String.Base64Decode(encoded))
+    key = 'IFYOUWANTTHEARTISTSTOGETPAIDDONOTDOWNLOADFROMMIXCLOUD'
     i = 0
     kl = len(key)
     res = ''
 
-    for ik in list(info):
+    for ik in encoded:
         res = res + chr(ord(ik) ^ ord(key[i % kl]))
         i = i+1
 
-    try:
-        return JSON.ObjectFromString(res)
-    except:
-        return None
+    return res
 
 
 def ApiRequest(uri, params=None):
